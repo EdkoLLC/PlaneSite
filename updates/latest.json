@@ -1,8 +1,8 @@
 {
- "version": "2.0.0",
+ "version": "2.0.1",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.0.zip",
- "sha256": "9e4e1ca47b66399fd1723ff6de7db323b16a0913fc1fdd7dce084d3707dad491",
- "notes": "PlaneSite 2.0 \u2014 from mapping flight to spray drone in one job:\n- Projects page: PlaneSite opens on your projects. Plan a mission starts a job before the flight: import the customer's boundary, reuse an earlier field, or find the spot (address, coordinates, Google Maps link or the map) and draw the field on a USDA satellite map.\n- Send to Pilot 2: the mapping mission goes to the M4E controller's cloud library. Height in feet with a linked GSD, speed in mph, overlaps, edge buffer, real-time terrain follow and elevation optimization.\n- After the flight, add the photos to the same job: the field stays in place on the new orthomosaic, ready to refine.\n- Obstacles: mark trees, poles and buildings inside a field.\n- Export boundaries for DJI Pilot 2, DJI Agras / SmartFarm, XAG, Ceres Applicator View and other software.\n- XAG map tiles: the orthomosaic as sharper web-map tiles for XAG One, and Publish to GitHub (sign in with GitHub, choose the organisation, large maps go up in parts).\n- Every export goes to the project's exports folder; PlaneSite's own files move into 'PlaneSite data' the first time a project is opened in 2.0.\n- The window opens maximized.\nNote: once a project has been opened in 2.0, PlaneSite 1.6 can't show its map, so update every computer that shares projects.",
+ "app_zip": "updates/planesite-app-2.0.1.zip",
+ "sha256": "422f64da468f026bcdb98264ad61e7d47fe156702f2b57b303518bb437daf910",
+ "notes": "PlaneSite 2.0.1:\n- Send to Pilot 2 no longer refuses to send when the speed, height or edge buffer isn't a round number (for example the default 33.6 mph). The same goes for the spray settings in Export boundaries.",
  "date": "2026-10-31"
 }

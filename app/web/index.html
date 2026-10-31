@@ -438,9 +438,9 @@
     </div>
     <label class="check" id="bndObsRow"><input type="checkbox" id="bndObs" checked> Include obstacles <small class="muted" id="bndObsNote"></small></label>
     <div class="p2grid" id="bndSpray">
-      <label>Rate (gal/ac)<input type="number" id="bndRate" step="0.1" min="0" max="50" value="3"></label>
-      <label>Spray height (ft)<input type="number" id="bndHeight" step="1" min="3" max="100" value="15"></label>
-      <label>Spray width (ft)<input type="number" id="bndWidth" step="0.5" min="3" max="80" value="18"></label>
+      <label>Rate (gal/ac)<input type="number" id="bndRate" step="any" min="0" max="50" value="3"></label>
+      <label>Spray height (ft)<input type="number" id="bndHeight" step="any" min="3" max="100" value="15"></label>
+      <label>Spray width (ft)<input type="number" id="bndWidth" step="any" min="3" max="80" value="18"></label>
     </div>
     <p class="hint small" id="bndWhere"></p>
     <p class="form-error" id="bndErr" role="alert"></p>
@@ -551,18 +551,18 @@
 
 <!-- ===== send to Pilot 2 ===== -->
 <dialog class="modal wide" id="p2Dlg" aria-labelledby="p2Title">
-  <form method="dialog" id="p2Form">
+  <form method="dialog" id="p2Form" novalidate>
     <header class="modalhead"><h2 id="p2Title">Send to Pilot 2</h2><button class="iconbtn sm" value="cancel" aria-label="Close"><svg><use href="#i-close"/></svg></button></header>
     <label>Mission name in Pilot 2
       <input id="p2Name" maxlength="80" autocomplete="off">
     </label>
     <div class="p2grid">
-      <label>Flight height (ft)<input type="number" id="p2Height" step="1" min="40" max="1640"></label>
-      <label title="Ground sample distance: the size of one photo pixel on the ground. Changing it sets the flight height, and the other way round.">GSD (cm)<input type="number" id="p2GsdIn" step="0.01" min="0.3" max="15"></label>
-      <label>Speed (mph)<input type="number" id="p2Speed" step="0.5" min="2" max="34"></label>
+      <label>Flight height (ft)<input type="number" id="p2Height" step="any" min="40" max="1640"></label>
+      <label title="Ground sample distance: the size of one photo pixel on the ground. Changing it sets the flight height, and the other way round.">GSD (cm)<input type="number" id="p2GsdIn" step="any" min="0.3" max="15"></label>
+      <label>Speed (mph)<input type="number" id="p2Speed" step="any" min="2" max="34"></label>
       <label>Front overlap (%)<input type="number" id="p2OvH" step="1" min="10" max="95"></label>
       <label>Side overlap (%)<input type="number" id="p2OvW" step="1" min="10" max="95"></label>
-      <label>Edge buffer (ft)<input type="number" id="p2Margin" step="1" min="0" max="650"></label>
+      <label>Edge buffer (ft)<input type="number" id="p2Margin" step="any" min="0" max="650"></label>
       <label>Flight lines (° from north)<input type="number" id="p2Dir" step="1" min="0" max="359"></label>
     </div>
     <label class="check"><input type="checkbox" id="p2Auto"> Run the flight lines along the field's long side <small class="muted" id="p2Axis"></small></label>
