@@ -1048,7 +1048,7 @@ def publish_start(b):
     target = (b.get("target") or "").strip()
     name = xyztiles.repo_name(b.get("name") or os.path.basename(folder))
     mode = b.get("mode") or "new"
-    if mode not in ("new", "into", "resume"):
+    if mode not in ("new", "into", "into_force", "resume", "replace"):
         raise ApiError("Unknown publish mode.")
     job = {"running": True, "phase": "preparing", "part": 0, "parts": 0, "sent": 0, "total": 0, "error": None,
            "result": None, "dest": d.id, "target": target, "name": name, "folder": folder, "mode": mode,

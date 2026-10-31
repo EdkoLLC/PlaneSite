@@ -1858,11 +1858,36 @@ async function pubGo() {
   const r = pub.check;
   if (!r) return;
   if (!r.exists) return pubStart("new");
-  $("pubExistsText").textContent = "A repository named " + r.name + " already exists in " + $("pubTarget").value + "." +
-    (r.resumable ? " An earlier publish of this folder stopped after part " + r.done + " of " + r.total + ": resume it, or push the whole map into the repository again." :
-                   " Push the map into it? Its zoom folders are replaced; other files (like a README) are kept.");
-  $("pubResume").hidden = !r.resumable;
+  pubAsk(r.resumable
+    ? "An earlier publish to " + $("pubTarget").value + "/" + r.name + " stopped part way. Resume uploads the rest; tiles already on GitHub aren't sent again."
+    : $("pubTarget").value + "/" + r.name + " already exists. Update uploads only the tiles that are new or changed; tiles already on GitHub aren't sent again. " +
+      "Replace starts the repository over with just this map (same tile address).",
+    { resume: r.resumable, into: r.resumable ? null : "Update" });
+}
+// the "repository exists" box: Update / Resume / Replace (Replace asks once more before deleting)
+function pubAsk(text, o) {
+  pub.replaceArmed = false;
+  $("pubExistsText").textContent = text;
+  $("pubResume").hidden = !o.resume;
+  $("pubInto").hidden = !o.into;
+  $("pubInto").textContent = o.into || "Update";
+  pub.intoMode = o.intoMode || "into";
+  $("pubReplace").textContent = "Replace";
+  $("pubReplace").className = "ghost small";
   $("pubExists").hidden = false;
+}
+function pubReplaceClick() {
+  if (!pub.replaceArmed) {
+    pub.replaceArmed = true;
+    $("pubExistsText").textContent = "Replace deletes " + $("pubTarget").value + "/" + $("pubName").value.trim() +
+      " on GitHub, with its history, then publishes this map into a new repository with the same name. " +
+      "The tile address stays the same, so XAG One keeps working.";
+    $("pubReplace").textContent = "Delete and replace";
+    $("pubReplace").className = "danger small";
+    ["pubInto", "pubResume"].forEach((id) => ($(id).hidden = true));
+    return;
+  }
+  pubStart("replace");
 }
 async function pubStart(mode) {
   $("pubExists").hidden = true;
@@ -1884,19 +1909,34 @@ function pubJob(j) {
   if (running) {
     $("pubBar").style.width = (j.total ? (100 * j.sent) / j.total : 2) + "%";
     $("pubProg").textContent = (j.parts ? "Part " + Math.max(1, j.part) + " of " + j.parts + " · " : "") +
-      (j.phase === "preparing" ? "Preparing… " : "") + fmtBytes(j.sent) + " of " + fmtBytes(j.total) + " uploaded";
+      (j.phase === "comparing" ? "Comparing with GitHub… " + fmtBytes(j.sent) + " of " + fmtBytes(j.total) + " checked"
+        : (j.phase === "preparing" ? "Preparing… " : "") + fmtBytes(j.sent) + " of " + fmtBytes(j.total) + " uploaded");
   } else if (pub.lastJob && pub.lastJob.running) {
     // just finished
     if (j.error) { setErr("pubErr", j.error); $("pubProg").textContent = ""; pubCheckSoon(); }
     else if (j.result && j.result.stopped) { $("pubProg").textContent = "Stopped after part " + j.result.done + " of " + j.result.parts + ". Publish again to resume."; pubCheckSoon(); }
+    else if (j.result && j.result.confirm) {
+      // updating would keep a lot of replaced tiles in the repository's history: ask first
+      const r = j.result;
+      $("pubProg").textContent = "";
+      pubAsk(fmt(r.changed) + " tiles (" + fmtBytes(r.changed_bytes) + ") differ from the ones on GitHub. Updating keeps the old versions in the " +
+        "repository's history, so it would grow to about " + fmtBytes(r.remote_bytes + r.upload_bytes) + ". Replace starts it over with just this map " +
+        "(about " + fmtBytes(r.bytes) + ").", { into: "Update anyway", intoMode: "into_force" });
+    }
     else if (j.result) {
       const r = j.result;
       $("pubProg").textContent = "";
       const d = $("pubDone");
       d.innerHTML = "";
       const p1 = document.createElement("p");
-      p1.textContent = "Published " + fmt(r.tiles) + " tiles (" + fmtBytes(r.bytes) + ") to " + j.target + "/" + j.name +
-        (r.parts > 1 ? " in " + r.parts + " parts" : "") + ". Tile address for XAG One:";
+      const up = (r.new || 0) + (r.changed || 0);
+      p1.textContent = r.unchanged
+        ? "Already up to date: all " + fmt(r.tiles) + " tiles are on " + j.target + "/" + j.name + ". Nothing was uploaded. Tile address for XAG One:"
+        : r.same
+          ? "Updated " + j.target + "/" + j.name + ": uploaded " + fmt(up) + " new or changed tiles (" + fmtBytes(r.upload_bytes) + ")" +
+            (r.removed ? ", removed " + fmt(r.removed) : "") + "; " + fmt(r.same) + " were already there. Tile address for XAG One:"
+          : "Published " + fmt(r.tiles) + " tiles (" + fmtBytes(r.bytes) + ") to " + j.target + "/" + j.name +
+            (r.parts > 1 ? " in " + r.parts + " parts" : "") + ". Tile address for XAG One:";
       const p2 = document.createElement("p");
       const code = document.createElement("code");
       code.textContent = r.url;
@@ -2056,7 +2096,8 @@ function wire() {
   $("pubMap").onchange = () => { $("pubName").value = $("pubMap").value; pubReset(); pubCheckSoon(); };
   $("pubInstallCopy").onclick = () => copyText($("pubInstallUrl").textContent, "Install link copied.");
   $("pubExCancel").onclick = () => ($("pubExists").hidden = true);
-  $("pubInto").onclick = () => pubStart("into");
+  $("pubInto").onclick = () => pubStart(pub.intoMode || "into");
+  $("pubReplace").onclick = pubReplaceClick;
   $("pubResume").onclick = () => pubStart("resume");
   $("pubStop").onclick = () => api("/api/publish/cancel", {});
   $("pubCopyUrl").onclick = () => copyText(pub.url, "Tile address copied.");

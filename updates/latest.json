@@ -1,8 +1,8 @@
 {
- "version": "2.0.1",
+ "version": "2.0.2",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.1.zip",
- "sha256": "422f64da468f026bcdb98264ad61e7d47fe156702f2b57b303518bb437daf910",
- "notes": "PlaneSite 2.0.1:\n- Send to Pilot 2 no longer refuses to send when the speed, height or edge buffer isn't a round number (for example the default 33.6 mph). The same goes for the spray settings in Export boundaries.",
+ "app_zip": "updates/planesite-app-2.0.2.zip",
+ "sha256": "37a8dfe716a6af24a28c6b970a49402863da114e68a6894165414d83795f70aa",
+ "notes": "PlaneSite 2.0.2: no doubled-up map data on GitHub.\n- Publishing a map that's already on GitHub now uploads only the tiles that are new or changed. Publishing the same tiles again uploads nothing and says it's already up to date.\n- If most tiles have changed (for example a re-made map), PlaneSite asks first: updating would keep the old tiles in the repository's history and roughly double its size. Replace starts the repository over with just the new map, at the same tile address.\n- A publish that stopped part way picks up where it left off without sending anything twice.",
  "date": "2026-10-31"
 }

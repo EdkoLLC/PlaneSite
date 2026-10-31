@@ -286,7 +286,70 @@ class GitHub(Destination):
             raise PublishError("Couldn't read the repository's files (HTTP %s)." % st)
         return [(e["path"], int(e["mode"], 8), e["sha"]) for e in t.get("tree") or [] if not e["path"].isdigit()]
 
+    def _tree(self, target, name, sha, recursive=False):
+        st, t = self._api("GET", "/repos/%s/%s/git/trees/%s%s" % (target, name, sha, "?recursive=1" if recursive else ""))
+        if st != 200:
+            raise PublishError("Couldn't read the repository's files (HTTP %s)." % st)
+        return t
+
+    def _remote_tiles(self, target, name, head):
+        """{(z, x, y): (blob sha, size)} of the tiles already in the repository's main branch.
+        One request per zoom folder; a folder too big for one listing is read column by column."""
+        if not head:
+            return {}
+        st, c = self._api("GET", "/repos/%s/%s/git/commits/%s" % (target, name, head))
+        if st != 200:
+            raise PublishError("Couldn't read the repository's latest commit (HTTP %s)." % st)
+        out = {}
+
+        def add(z, x, entries):
+            for e in entries:
+                n = e["path"]
+                if e["type"] == "blob" and n.endswith(".png") and n[:-4].isdigit():
+                    out[(z, x, int(n[:-4]))] = (e["sha"], int(e.get("size") or 0))
+
+        for ze in self._tree(target, name, c["tree"]["sha"]).get("tree") or []:
+            if not (ze["type"] == "tree" and ze["path"].isdigit()):
+                continue
+            z = int(ze["path"])
+            t = self._tree(target, name, ze["sha"], recursive=True)
+            if not t.get("truncated"):
+                cols = {}
+                for e in t.get("tree") or []:
+                    parts = e["path"].split("/")
+                    if len(parts) == 2 and parts[0].isdigit():
+                        cols.setdefault(int(parts[0]), []).append(dict(e, path=parts[1]))
+                for x, ents in cols.items():
+                    add(z, x, ents)
+                continue
+            for xe in self._tree(target, name, ze["sha"]).get("tree") or []:
+                if xe["type"] == "tree" and xe["path"].isdigit():
+                    add(z, int(xe["path"]), self._tree(target, name, xe["sha"]).get("tree") or [])
+        return out
+
+    def _delete(self, target, name):
+        """Delete the repository (to publish a map again without keeping the old tiles in its history)."""
+        st, r = self._api("DELETE", "/repos/%s/%s" % (target, name))
+        if st not in (204, 404):
+            msg = (r or {}).get("message") or "HTTP %s" % st
+            raise PublishError("GitHub refused to delete %s/%s to start it over (%s). An owner of %s may need "
+                               "to allow members to delete repositories, or delete it on github.com."
+                               % (target, name, msg, target))
+        for _ in range(40):
+            if self._api("GET", "/repos/%s/%s" % (target, name))[0] == 404:
+                return
+            time.sleep(0.5)
+
+    # How much changed content "Update" may add to the history before PlaneSite asks first: GitHub keeps
+    # every earlier version of a tile, so re-publishing a re-made map would double the repository.
+    HISTORY_ASK_BYTES = 200_000_000
+    HISTORY_ASK_SHARE = 0.25
+
     def publish(self, folder, target, name, mode, progress, cancel):
+        """mode: "new" (create), "into" (update an existing repository: only new and changed tiles go up;
+        asks first when that would leave a lot of replaced tiles in the history), "into_force" (update
+        without asking), "resume" (same as into_force), "replace" (delete the repository and publish
+        into a fresh one at the same address)."""
         use_vendor()
         from dulwich.client import Urllib3HttpGitClient
         from dulwich.objects import Blob, Commit, Tree
@@ -297,52 +360,89 @@ class GitHub(Destination):
         tiles = scan_tiles(folder)
         if not tiles:
             raise PublishError("No tiles in %s. Make the XAG tiles first." % folder)
-        batches = plan_batches(tiles)
-        total = sum(t[4] for t in tiles)
+        total_all = sum(t[4] for t in tiles)
         if not self._targets:
             try:
                 self.targets()
             except PublishError:
                 pass
-        progress({"phase": "preparing", "part": 0, "parts": len(batches), "sent": 0, "total": total})
+        progress({"phase": "preparing", "part": 0, "parts": 0, "sent": 0, "total": total_all})
+        if mode == "replace":
+            self._delete(target, name)
+            save_state(self.id, target, name, None)
+            mode = "new"
         if mode == "new":
             self._create(target, name, login)
         head = self._head(target, name)
-        start = 0
-        if mode == "resume":
-            s = load_state(self.id, target, name) or {}
-            if not (head and s.get("head") == head):
-                raise PublishError("The repository has changed since the publish stopped. Publish it again instead.")
-            start = int(s.get("done", 0))
-        keep = self._keep_entries(target, name, head)
-        if mode == "new" and not any(k[0].lower() == "readme.md" for k in keep):
-            readme = Blob.from_string(("# %s\n\nXAG One base map tiles, made with PlaneSite.\n\nTile address:\n\n    %s\n"
-                                       % (name, self.tile_url(target, name))).encode())
-        else:
-            readme = None
 
-        client = Urllib3HttpGitClient(WEB + "/", username="x-access-token", password=tok)
-        path = "/%s/%s.git" % (target, name)
-        zdir = {}                                  # z -> x -> {y: blob id}
-        sent_bytes = [sum(t[4] for b in batches[:start] for t in b)]
+        # what's on GitHub already, and which local tiles differ from it
+        remote = self._remote_tiles(target, name, head) if head else {}
 
         def blob_id(p):
             with open(p, "rb") as f:
                 data = f.read()
-            return hashlib.sha1(b"blob %d\x00" % len(data) + data).hexdigest().encode()
+            return hashlib.sha1(b"blob %d\x00" % len(data) + data).hexdigest()
 
-        for b in batches[:start]:                  # already on GitHub: only their ids are needed
-            for z, x, y, p, sz in b:
-                zdir.setdefault(z, {}).setdefault(x, {})[y] = blob_id(p)
+        ids, done_b, last = {}, [0], [0.0]
+        for z, x, y, p, sz in tiles:
+            if cancel():
+                return {"stopped": True, "done": 0, "parts": 0}
+            ids[(z, x, y)] = blob_id(p)
+            done_b[0] += sz
+            if time.time() - last[0] > 0.3:
+                last[0] = time.time()
+                progress({"phase": "comparing", "part": 0, "parts": 0, "sent": done_b[0], "total": total_all})
+        todo = [t for t in tiles if (remote.get(t[:3]) or (None,))[0] != ids[t[:3]]]
+        removed = [k for k in remote if k not in ids]
+        changed = [t for t in todo if t[:3] in remote]
+        changed_bytes = sum(remote[t[:3]][1] for t in changed)
+        remote_bytes = sum(v[1] for v in remote.values())
+        stats = {"same": len(tiles) - len(todo), "new": len(todo) - len(changed), "changed": len(changed),
+                 "removed": len(removed), "changed_bytes": changed_bytes, "remote_bytes": remote_bytes,
+                 "upload_bytes": sum(t[4] for t in todo)}
+        base = {"url": self.tile_url(target, name), "repo_url": "%s/%s/%s" % (WEB, target, name),
+                "tiles": len(tiles), "bytes": total_all}
+        if head and not todo and not removed:
+            save_state(self.id, target, name, None)
+            progress({"phase": "done", "part": 0, "parts": 0, "sent": 0, "total": 0})
+            return dict(base, unchanged=True, parts=0, **stats)
+        if mode == "into" and changed_bytes > self.HISTORY_ASK_BYTES and \
+                changed_bytes > self.HISTORY_ASK_SHARE * max(remote_bytes, 1):
+            return dict(base, confirm=True, **stats)
+
+        keep = self._keep_entries(target, name, head)
+        readme = None
+        if not any(k[0].lower() == "readme.md" for k in keep):
+            readme = Blob.from_string(("# %s\n\nXAG One base map tiles, made with PlaneSite.\n\nTile address:\n\n    %s\n"
+                                       % (name, self.tile_url(target, name))).encode())
+        batches = plan_batches(todo) or [[]]           # nothing to upload but removals: one commit
+        total = stats["upload_bytes"]
+        client = Urllib3HttpGitClient(WEB + "/", username="x-access-token", password=tok)
+        path = "/%s/%s.git" % (target, name)
+        # the tree starts as what's on GitHub (so the map stays whole between parts); each part swaps
+        # in its new and changed tiles, and the last part drops tiles the map no longer has
+        zdir = {}
+        for (z, x, y), (sha, _) in remote.items():
+            zdir.setdefault(z, {}).setdefault(x, {})[y] = sha.encode()
+        sent_bytes = [0]
         sent_trees = set()
-        for i in range(start, len(batches)):
+        for i in range(len(batches)):
             if cancel():
                 progress({"phase": "stopped", "part": i, "parts": len(batches), "sent": sent_bytes[0], "total": total})
                 return {"stopped": True, "done": i, "parts": len(batches)}
             b = batches[i]
             progress({"phase": "preparing", "part": i + 1, "parts": len(batches), "sent": sent_bytes[0], "total": total})
             for z, x, y, p, sz in b:
-                zdir.setdefault(z, {}).setdefault(x, {})[y] = blob_id(p)
+                zdir.setdefault(z, {}).setdefault(x, {})[y] = ids[(z, x, y)].encode()
+            if i == len(batches) - 1:
+                for z, x, y in removed:
+                    col = zdir.get(z, {}).get(x)
+                    if col is not None:
+                        col.pop(y, None)
+                        if not col:
+                            zdir[z].pop(x)
+                            if not zdir[z]:
+                                zdir.pop(z)
             root = Tree()
             trees = []
             for nm, md, sha in keep:
@@ -368,9 +468,10 @@ class GitHub(Destination):
             c.author = c.committer = who
             c.author_time = c.commit_time = int(time.time())
             c.author_timezone = c.commit_timezone = 0
+            what = describe_batch(b) if b else "removed tiles"
             c.message = ("Map tiles: %s (part %d of %d)\n\nMade with PlaneSite.\n"
-                         % (describe_batch(b), i + 1, len(batches))).encode()
-            extra = [readme] if (readme is not None and i == start and mode == "new") else []
+                         % (what, i + 1, len(batches))).encode()
+            extra = [readme] if (readme is not None and i == 0) else []
             expected = head.encode() if head else None
             part = i + 1
 
@@ -383,22 +484,27 @@ class GitHub(Destination):
             def generate_pack_data(have, want, ofs_delta=False, progress=None, b=b, new_trees=new_trees, c=c,
                                    extra=extra, part=part, **kw):
                 def objs():
+                    seen = set()
                     for z, x, y, p, sz in b:
                         if cancel():
                             raise PublishError("Stopped.")
-                        with open(p, "rb") as f:
-                            yield full_unpacked_object(Blob.from_string(f.read()))
+                        bid = ids[(z, x, y)]
+                        if bid not in seen:              # identical tiles (e.g. plain field) go up once
+                            seen.add(bid)
+                            with open(p, "rb") as f:
+                                yield full_unpacked_object(Blob.from_string(f.read()))
                         sent_bytes[0] += sz
                         tick(part)
                     for o in extra + new_trees + [c]:
                         yield full_unpacked_object(o)
-                return len(b) + len(extra) + len(new_trees) + 1, objs()
+                n_blobs = len({ids[t[:3]] for t in b})
+                return n_blobs + len(extra) + len(new_trees) + 1, objs()
 
-            last = [0.0]
+            lastp = [0.0]
 
             def tick(part):
-                if time.time() - last[0] > 0.3:
-                    last[0] = time.time()
+                if time.time() - lastp[0] > 0.3:
+                    lastp[0] = time.time()
                     progress({"phase": "uploading", "part": part, "parts": len(batches), "sent": sent_bytes[0],
                               "total": total})
 
@@ -411,8 +517,8 @@ class GitHub(Destination):
                 msg = str(e)
                 if "401" in msg or "403" in msg or "Unauthorized" in type(e).__name__:
                     msg = "GitHub refused the upload (no write access to %s/%s)." % (target, name)
-                raise PublishError("Upload part %d of %d failed: %s. Publish again to resume from this part."
-                                   % (part, len(batches), msg))
+                raise PublishError("Upload part %d of %d failed: %s. Publish again to continue: tiles already "
+                                   "on GitHub aren't uploaded again." % (part, len(batches), msg))
             errs = {k: v for k, v in (getattr(res, "ref_status", None) or {}).items() if v}
             if errs:
                 raise PublishError("GitHub rejected part %d of %d: %s" % (part, len(batches), "; ".join(
@@ -423,5 +529,4 @@ class GitHub(Destination):
                                                "at": time.strftime("%Y-%m-%d %H:%M")})
         save_state(self.id, target, name, None)
         progress({"phase": "done", "part": len(batches), "parts": len(batches), "sent": total, "total": total})
-        return {"url": self.tile_url(target, name), "repo_url": "%s/%s/%s" % (WEB, target, name),
-                "tiles": len(tiles), "bytes": total, "parts": len(batches)}
+        return dict(base, parts=len(batches), **stats)

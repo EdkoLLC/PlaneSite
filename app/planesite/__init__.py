@@ -1,5 +1,5 @@
 """PlaneSite - drone mapping and spray mission planning."""
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 APP_NAME = "PlaneSite"
 UPDATE_REPO = "EdkoLLC/PlaneSite"   # GitHub repo that hosts updates/latest.json
 RUNTIME = 3                          # version of the bundled python/ folder this app needs
