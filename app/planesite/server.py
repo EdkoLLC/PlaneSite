@@ -776,7 +776,7 @@ def pilot2_settings():
         has_key = False
     d = dict(pilot2.DEFAULTS)
     d.update(S.cfg.get("pilot2") or {})
-    return {"hub_url": S.cfg.get("hub_url") or pilot2.DEFAULT_HUB, "default_hub": pilot2.DEFAULT_HUB,
+    return {"hub_url": pilot2.hub_setting(S.cfg.get("hub_url")) or pilot2.DEFAULT_HUB, "default_hub": pilot2.DEFAULT_HUB,
             "user": S.cfg.get("hub_user") or "", "has_key": has_key, "defaults": d}
 
 
@@ -786,7 +786,11 @@ def pilot2_set(b):
         u = (b.get("hub_url") or "").strip().rstrip("/")
         if u and not re.match(r"^https?://[^\s/]+", u):
             raise ApiError("The hub address should start with https://")
-        S.cfg["hub_url"] = u or pilot2.DEFAULT_HUB
+        u = pilot2.hub_setting(u)
+        if u:
+            S.cfg["hub_url"] = u
+        else:
+            S.cfg.pop("hub_url", None)       # follow the built-in address (and its fallback)
     if "user" in b:
         S.cfg["hub_user"] = (b.get("user") or "").strip()[:60]
     if b.get("key") is not None and (b.get("key") or b.get("clear_key")):
@@ -842,7 +846,7 @@ def pilot2_send(b):
     keep = {k: s[k] for k in pilot2.DEFAULTS}
     if b.get("upload", True):
         try:
-            hub = pilot2.upload(S.cfg.get("hub_url") or pilot2.DEFAULT_HUB, pilot2.load_key(), kmz, name + ".kmz",
+            hub = pilot2.send(S.cfg.get("hub_url"), pilot2.load_key(), kmz, name + ".kmz",
                                 name=name, user=S.cfg.get("hub_user") or None)
         except (PermissionError, ConnectionError, RuntimeError) as e:
             raise ApiError(str(e))

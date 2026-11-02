@@ -103,7 +103,11 @@ _BOOLS = ("auto_direction", "terrain_follow", "elevation_optimize")
 
 # M4E wide camera
 SENSOR_W_MM, SENSOR_H_MM, FOCAL_MM, IMAGE_W_PX = 17.3, 13.0, 12.29, 5280
-DEFAULT_HUB = "https://planesite-hub.justin-anderson.workers.dev"
+DEFAULT_HUB = "https://missions.himmeluav.com"
+# Earlier addresses of the same hub (the same Cloudflare Worker and storage, so a mission sent to
+# either shows up on every controller). A saved setting equal to one of these follows the default,
+# and the first one is the fallback while the domain isn't reachable yet.
+OLD_HUBS = ("https://planesite-hub.justin-anderson.workers.dev",)
 MAX_KMZ_BYTES = int(1.9 * 1024 * 1024)
 BAD_NAME_CHARS = r'\/:*?"<>|'
 
@@ -301,6 +305,35 @@ def prepare(area, epsg, given=None):
 
 
 # ------------------------------------------------------------------------------ the hub
+def hub_setting(saved):
+    """The hub address to show and store: '' (follow the default) unless it's a custom address."""
+    u = (saved or "").strip().rstrip("/")
+    return "" if u == DEFAULT_HUB or u in OLD_HUBS else u
+
+
+def hub_addresses(saved):
+    """Addresses to try, in order: a custom address alone, or the default and then the old ones."""
+    u = hub_setting(saved)
+    return [u] if u else [DEFAULT_HUB] + list(OLD_HUBS)
+
+
+def send(saved_url, key, kmz, filename, name=None, user=None, timeout=60):
+    """upload() to the hub, falling back to its older address when the default can't be reached
+    (domain not set up yet, its certificate still being issued, ...). Only connection failures fall
+    back: the hub's own answers (wrong password, refused file) are final. Sending twice is harmless,
+    since the same name replaces the mission."""
+    first = None
+    for url in hub_addresses(saved_url):
+        try:
+            r = upload(url, key, kmz, filename, name=name, user=user, timeout=timeout)
+            if isinstance(r, dict):
+                r.setdefault("hub_address", url)
+            return r
+        except ConnectionError as e:
+            first = first or e
+    raise first
+
+
 def upload(base_url, key, kmz, filename, name=None, user=None, timeout=60):
     """POST the KMZ to the hub. Same name replaces the existing mission. Returns the hub's JSON."""
     import urllib.error
