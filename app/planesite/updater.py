@@ -22,6 +22,12 @@ from . import __version__, UPDATE_REPO, RUNTIME
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.dirname(APP_DIR)
+# The Mac app (PlaneSite.app) is never changed: updates go to Application Support/PlaneSite/app,
+# and the app's launcher runs that copy when it's newer than the one built in.
+BUNDLE_RES = os.environ.get("PLANESITE_BUNDLE_RES") if sys.platform == "darwin" else None
+PYTHON_DIR = os.path.join(BUNDLE_RES or ROOT_DIR, "python")
+if BUNDLE_RES:
+    ROOT_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PlaneSite")
 UPDATE_DIR = os.path.join(ROOT_DIR, "_update")
 IS_WIN = sys.platform == "win32"
 
@@ -38,7 +44,7 @@ def vtuple(v):
 
 
 def installed_runtime():
-    p = os.path.join(ROOT_DIR, "python", "planesite_runtime.txt")
+    p = os.path.join(PYTHON_DIR, "planesite_runtime.txt")
     try:
         with open(p) as f:
             return int(f.read().strip())
@@ -79,18 +85,17 @@ def check():
            "notes": man.get("notes", ""), "page": page, "published": man.get("date")}
     if available:
         app_zip = man.get("app_zip")
-        if sys.platform == "darwin":
-            # the Mac app is a sealed bundle: never rewrite it in place, download the new one instead
-            out["needs_full"] = True
-            out["full_url"] = man.get("mac_url") or page
-            out["full_note"] = "On a Mac, download the new PlaneSite app and replace the old one in Applications. Your projects are kept."
-            return out
         if not app_zip or int(man.get("runtime", RUNTIME)) > installed_runtime():
             out["needs_full"] = True
         else:
             out["needs_full"] = False
             out["_download"] = {"url": "%s/%s" % (base, app_zip), "sha256": man.get("sha256", "")}
         out["full_url"] = man.get("full_url") or page
+        if sys.platform == "darwin":
+            out["full_url"] = man.get("mac_url") or page
+            if out["needs_full"]:
+                out["full_note"] = ("This update needs the new PlaneSite app: download it and replace the "
+                                    "one in Applications. Your projects are kept.")
     return out
 
 
@@ -117,7 +122,7 @@ def _install_worker(info):
     try:
         if os.path.exists(UPDATE_DIR):
             shutil.rmtree(UPDATE_DIR, ignore_errors=True)
-        os.makedirs(UPDATE_DIR, exist_ok=True)
+        os.makedirs(UPDATE_DIR, exist_ok=True)  # also makes ROOT_DIR on a Mac
         zpath = os.path.join(UPDATE_DIR, "app.zip")
         h = hashlib.sha256()
         with _get(info["_download"]["url"], timeout=60) as r, open(zpath, "wb") as f:
@@ -176,11 +181,14 @@ for attempt in range(60):
     try:
         if os.path.exists(old):
             shutil.rmtree(old, ignore_errors=True)
-        os.replace(app, old)
+        had = os.path.exists(app)  # a Mac's first update has no app folder here yet
+        if had:
+            os.replace(app, old)
         try:
             os.replace(new, app)
         except Exception:
-            os.replace(old, app)
+            if had:
+                os.replace(old, app)
             raise
         ok = True
         break

@@ -27,15 +27,59 @@ MIN_MACOS = "15.0"        # rasterio's macOS wheels need Sequoia; every Apple Si
 LAUNCHER = """#!/bin/bash
 # PlaneSite launcher: runs the bundled Python with the app. The window is a Chrome / Edge app
 # window (or a tab in the default browser); this process is PlaneSite's local server.
+# Updates never change this bundle: they go to ~/Library/Application Support/PlaneSite/app,
+# and choose_app.py picks that copy when it is newer than the one built in.
 RES="$(cd "$(dirname "$0")/../Resources" && pwd)"
 export PLANESITE_APP_BUNDLE=1
+export PLANESITE_BUNDLE_RES="$RES"
+export PLANESITE_TURBOJPEG="$RES/app/planesite/bin/libturbojpeg.dylib"
 # keep Python's compiled-file cache out of the app bundle
 export PYTHONPYCACHEPREFIX="$HOME/Library/Caches/PlaneSite/pycache"
 # once macOS has let the app open, clear the download mark from the files inside it too
 xattr -dr com.apple.quarantine "$RES/../.." 2>/dev/null
+PY="$RES/python/bin/python3"
+APP="$("$PY" -I "$RES/choose_app.py" "$RES" 2>/dev/null)"
+[ -f "$APP/main.py" ] || APP="$RES/app"
 cd "$RES"
-exec "$RES/python/bin/python3" "$RES/app/main.py" "$@"
+exec "$PY" "$APP/main.py" "$@"
 """
+
+CHOOSER = r'''"""Prints the app folder to run: the updated copy in Application Support when it is newer
+than the one inside PlaneSite.app and works with this app's Python, else the built-in one."""
+import os
+import re
+import sys
+
+res = sys.argv[1]
+builtin = os.path.join(res, "app")
+user = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PlaneSite", "app")
+
+
+def info(d):
+    try:
+        with open(os.path.join(d, "planesite", "__init__.py"), encoding="utf-8") as f:
+            s = f.read()
+    except OSError:
+        return None
+    v = re.search(r'^__version__\s*=\s*"([^"]+)"', s, re.M)
+    r = re.search(r"^RUNTIME\s*=\s*(\d+)", s, re.M)
+    if not v or not os.path.isfile(os.path.join(d, "main.py")):
+        return None
+    nums = [int(x) for x in re.findall(r"\d+", v.group(1))[:3]]
+    return tuple(nums + [0] * (3 - len(nums))), int(r.group(1)) if r else 0
+
+
+try:
+    with open(os.path.join(res, "python", "planesite_runtime.txt")) as f:
+        runtime = int(f.read().strip())
+except Exception:
+    runtime = 0
+b, u = info(builtin), info(user)
+pick = builtin
+if u and (not b or u[0] > b[0]) and u[1] <= runtime:
+    pick = user
+print(pick)
+'''
 
 PLIST = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -88,6 +132,8 @@ def main():
     with open(lp, "w") as f:
         f.write(LAUNCHER)
     os.chmod(lp, 0o755)
+    with open(os.path.join(res, "choose_app.py"), "w") as f:
+        f.write(CHOOSER)
     icns = os.path.join(out, "PlaneSite.icns")
     if os.path.exists(icns):
         shutil.copy(icns, os.path.join(res, "PlaneSite.icns"))
