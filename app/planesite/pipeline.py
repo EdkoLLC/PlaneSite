@@ -1042,6 +1042,18 @@ def write_orthomosaic(path, cams, dsm, origin, epsg, ox0, oy1, gsd, out_w, out_h
            # JPEG mosaics: workers compress the GeoTIFF tiles themselves (tiffwriter.py)
            "tiff_jpeg_q": int(settings.get("jpeg_quality", 90)) if settings.get("compression", "jpeg") == "jpeg"
            and not os.environ.get("PLANESITE_GDAL_WRITER") else None}
+    # seams between flight lines placed clear of raised detail (power lines, fences), from the
+    # thumbnails written while finding features (seams.py); the plain rule if that isn't possible
+    if settings.get("smart_seams", True):
+        t_s = time.time()
+        try:
+            from .seams import plan as seam_plan
+            thumb_dir = os.path.join(work, "thumbs")
+            ctx["seam_plan"] = seam_plan(cams, dsm, lambda cam: os.path.join(thumb_dir, "%d.jpg" % cam["idx"]), log=log)
+        except Exception as e:
+            log("Seams: skipped (%s: %s)" % (type(e).__name__, e))
+            ctx["seam_plan"] = None
+        log("Seams planned in %.1f s" % (time.time() - t_s))
     ctx_file = os.path.join(work, "render_ctx.pkl")
     with open(ctx_file, "wb") as f:
         pickle.dump(ctx, f)

@@ -8,6 +8,8 @@ from collections import OrderedDict
 import cv2
 import numpy as np
 
+from .seams import line_weight
+
 from .camera import undistort_normalized
 from .features import load_image
 from .surface import sample_dsm
@@ -575,7 +577,11 @@ def region_plan(region, tiles):
     if not covered.any():
         return None
     with np.errstate(invalid="ignore"):
-        Wt = np.where(np.isfinite(scores) & covered[None], np.exp(-(scores - best[None]) / c["tau"]), 0.0) * FADE
+        Wt = np.where(np.isfinite(scores) & covered[None], np.exp(-(scores - best[None]) / c["tau"]), 0.0)
+    sp = c.get("seam_plan")
+    if sp is not None:
+        Wt = _line_weights(sp, cand, scores, Wt, P, covered, c["tau"])
+    Wt = Wt * FADE
     Wt[Wt < c.get("w_cut", 0.03)] = 0.0
     items = []
     for a, ci in enumerate(cand):
@@ -593,6 +599,29 @@ def region_plan(region, tiles):
         items.append((a, ci, int(r0), int(r1), int(c0), int(c1)))
     return {"cand": cand, "Wt": Wt, "U": U, "V": V, "covered": covered, "ncy": ncy, "ncx": ncx,
             "step": step, "items": items, "P": P}
+
+
+def _line_weights(sp, cand, scores, Wplain, P, covered, tau):
+    """Blend weights when seams follow flight lines (seams.plan): each spot from the most
+    straight-down photo of its own line, feathered across the line boundaries; the plain rule
+    (Wplain) wherever the spot's line has no photo there (line ends, turns)."""
+    lc = np.asarray(sp["line_of"])[cand]
+    share = line_weight(sp, P[:, 0], P[:, 1], np.arange(len(sp["lines"])))   # (lines, points)
+    W = np.zeros_like(Wplain)
+    used = np.zeros(P.shape[0])
+    for li in np.unique(lc[lc >= 0]):
+        rows = np.nonzero(lc == li)[0]
+        sl = scores[rows]
+        bl = sl.min(0)
+        has = np.isfinite(bl) & covered
+        if not has.any():
+            continue
+        with np.errstate(invalid="ignore"):
+            wl = np.where(np.isfinite(sl) & has[None], np.exp(-(sl - bl[None]) / tau), 0.0)
+        W[rows] = wl * share[li][None]
+        used += np.where(has, share[li], 0.0)
+    rest = np.clip(1.0 - used, 0.0, 1.0)
+    return W + Wplain * rest[None]
 
 
 def half_res(rgb, alpha):
