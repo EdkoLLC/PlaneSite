@@ -1,8 +1,8 @@
 {
- "version": "2.0.4",
+ "version": "2.0.5",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.4.zip",
- "sha256": "f7ff8bc09c1094dc82473fc114f9bb5d9b938193c5fb03a1f47004b7ad8b70cb",
- "notes": "PlaneSite 2.0.4: power lines and fences stay in one piece.\n- Seams between flight lines are now placed clear of raised detail. A power line or fence running along the flight lines used to come out in pieces, or vanish, because it appears a few feet apart in neighbouring flight lines' photos and the seam ran right between the two. PlaneSite now finds where neighbouring flight lines disagree and keeps the seam clear of it, so the wire comes from one set of photos. Where the seam has to cross (around trees, for example), it does so in one short jog.\n- Works on regular mapping missions (parallel flight lines, as Pilot 2 flies them); other flights keep the previous seams. Rendering takes about 10% longer.\n- Re-process a job to get the new seams.",
+ "app_zip": "updates/planesite-app-2.0.5.zip",
+ "sha256": "9c0a302e17cc0e2d1d4a68ee4a22a2f98210335187122ced0b6a7ba2891c253c",
+ "notes": "PlaneSite 2.0.5:\n- Export boundaries for Ceres Applicator View now includes the obstacles, cut out of the field.\n- Export boundaries for XAG writes just the KML. Tick 'Also write a GeoJSON' if you need the GeoJSON for XAG's FMS web portal.\n- Also in 2.0.4: seams between flight lines keep power lines and fences in one piece (re-process a job to get them).",
  "date": "2026-11-04"
 }
