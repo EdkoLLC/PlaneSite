@@ -5,6 +5,21 @@ UPDATE_REPO = "EdkoLLC/PlaneSite"   # GitHub repo that hosts updates/latest.json
 RUNTIME = 3                          # version of the bundled python/ folder this app needs
 
 
+def _mac_locations():
+    """On a Mac, PlaneSite's settings, logs, window profile and resume records live in
+    ~/Library/Application Support/PlaneSite. The code finds them through APPDATA / LOCALAPPDATA
+    (the Windows locations), so those point there."""
+    import os
+    import sys
+    if sys.platform == "darwin":
+        base = os.path.join(os.path.expanduser("~"), "Library", "Application Support")
+        os.environ.setdefault("APPDATA", base)
+        os.environ.setdefault("LOCALAPPDATA", base)
+
+
+_mac_locations()
+
+
 def _use_own_geodata():
     """Point PROJ and GDAL at the data files bundled with PlaneSite's rasterio.
 

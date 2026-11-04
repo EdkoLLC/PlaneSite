@@ -24,7 +24,7 @@ with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for root, dirs, files in os.walk(APP):
         dirs[:] = sorted(d for d in dirs if d != "__pycache__")
         for f in sorted(files):
-            if f.endswith(".pyc"):
+            if f.endswith((".pyc", ".dylib")):  # the Mac app carries its own copy
                 continue
             full = os.path.join(root, f)
             z.write(full, os.path.join("app", os.path.relpath(full, APP)))

@@ -79,6 +79,12 @@ def check():
            "notes": man.get("notes", ""), "page": page, "published": man.get("date")}
     if available:
         app_zip = man.get("app_zip")
+        if sys.platform == "darwin":
+            # the Mac app is a sealed bundle: never rewrite it in place, download the new one instead
+            out["needs_full"] = True
+            out["full_url"] = man.get("mac_url") or page
+            out["full_note"] = "On a Mac, download the new PlaneSite app and replace the old one in Applications. Your projects are kept."
+            return out
         if not app_zip or int(man.get("runtime", RUNTIME)) > installed_runtime():
             out["needs_full"] = True
         else:

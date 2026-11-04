@@ -390,6 +390,10 @@ def save_key(key):
     if sys.platform == "win32":
         _win_cred_write(_CRED_TARGET, key or "")
         return
+    if sys.platform == "darwin":
+        from .credstore import _mac_save
+        _mac_save(_CRED_TARGET, key or "")
+        return
     p = _cred_file()
     os.makedirs(os.path.dirname(p), exist_ok=True)
     if not key:
@@ -404,6 +408,9 @@ def save_key(key):
 def load_key():
     if sys.platform == "win32":
         return _win_cred_read(_CRED_TARGET)
+    if sys.platform == "darwin":
+        from .credstore import _mac_load
+        return _mac_load(_CRED_TARGET)
     try:
         with open(_cred_file()) as f:
             return f.read().strip() or None
