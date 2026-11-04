@@ -708,14 +708,15 @@ def obstacle_parents(areas):
 #               (dose_ha, L/ha), height and line_space (m) the controller reads
 #   xag         <project>/<field>_Boundary.kml (boundary placemark + obstacles placemark); on request
 #               also <field>.geojson (Area + Obstacle features), for the XAG FMS portal
-#   ceres       KML, one polygon per field with the obstacles cut out (Ceres Air Applicator View
-#               reads obstacles as holes)
+#   ceres       one KML per field: the boundary and each obstacle as separate polygons tagged
+#               BOUNDARY / OBSTACLE (as generic). Applicator View then classifies them itself
+#               ("Obstacle", sure); holes in the field came in as unknown shapes it set to Skip.
 TARGETS = {
     "generic": {"formats": ("kml", "geojson", "shp"), "obstacles": "separate"},
     "dji_mapping": {"formats": ("kml",), "obstacles": None},
     "dji_agras": {"formats": ("shp",), "obstacles": "holes"},
     "xag": {"formats": ("kml",), "obstacles": "separate"},
-    "ceres": {"formats": ("kml",), "obstacles": "holes"},
+    "ceres": {"formats": ("kml",), "obstacles": "separate"},
 }
 GAL_AC_TO_L_HA = 9.35396
 FT = 0.3048
@@ -798,7 +799,7 @@ def export_outlines(areas, ids, epsg, out_dir, target="generic", fmt="kml", per_
         elif fmt == "kml":
             p = os.path.join(out_dir, stem + ".kml")
             with open(p, "w", encoding="utf-8") as fh:
-                fh.write(_kml_doc(feats, now, typed=(target == "generic")))
+                fh.write(_kml_doc(feats, now, typed=(target in ("generic", "ceres"))))
             files.append(p)
         elif fmt == "geojson":
             p = os.path.join(out_dir, stem + ".geojson")

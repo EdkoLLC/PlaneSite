@@ -1477,7 +1477,7 @@ const BND_HOW = {
   dji_agras: "Writes a DJI\\ShapeFile folder. Copy the DJI folder to the root of the remote controller's microSD card or a USB drive, " +
     "then import the field in the Agras app. Each field is one shape with the obstacles cut out.",
   xag: "Writes a folder with a KML for each field (boundary and obstacles). Import it in XAG's field manager (Field Import) or the XAG One app.",
-  ceres: "One KML per field, with the obstacles cut out of the field. In Applicator View: Manage Fields → Import Fields.",
+  ceres: "One KML per field with the boundary and its obstacles. In Applicator View: Manage Fields → Import Fields; the obstacles come in as obstacles.",
   generic: "Boundaries and obstacles as separate shapes tagged BOUNDARY and OBSTACLE, as Pix4Dfields writes them.",
 };
 const BND_OBS = { dji_mapping: false };
