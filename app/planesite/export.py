@@ -706,15 +706,16 @@ def obstacle_parents(areas):
 #   dji_agras   DJI/ShapeFile/<field>_Boundary.shp (+shx, dbf, prj, cpg) for the Agras remote
 #               controller's SD card: one polygon per field, obstacles as holes, with the rate
 #               (dose_ha, L/ha), height and line_space (m) the controller reads
-#   xag         <project>/<field>_Boundary.kml (boundary placemark + obstacles placemark) and
-#               <field>.geojson (Area + Obstacle features), for the XAG FMS portal
-#   ceres       KML, each field a single simple polygon (Ceres Air Applicator View)
+#   xag         <project>/<field>_Boundary.kml (boundary placemark + obstacles placemark); on request
+#               also <field>.geojson (Area + Obstacle features), for the XAG FMS portal
+#   ceres       KML, one polygon per field with the obstacles cut out (Ceres Air Applicator View
+#               reads obstacles as holes)
 TARGETS = {
     "generic": {"formats": ("kml", "geojson", "shp"), "obstacles": "separate"},
     "dji_mapping": {"formats": ("kml",), "obstacles": None},
     "dji_agras": {"formats": ("shp",), "obstacles": "holes"},
     "xag": {"formats": ("kml",), "obstacles": "separate"},
-    "ceres": {"formats": ("kml",), "obstacles": None},
+    "ceres": {"formats": ("kml",), "obstacles": "holes"},
 }
 GAL_AC_TO_L_HA = 9.35396
 FT = 0.3048
@@ -725,9 +726,10 @@ def _safe_file(s):
 
 
 def export_outlines(areas, ids, epsg, out_dir, target="generic", fmt="kml", per_field=True, obstacles=True,
-                    base="fields", spray=None):
+                    base="fields", spray=None, xag_geojson=False):
     """Write the chosen fields (and the obstacles inside them) for another program. Returns the
-    files written. spray: {rate_gal_ac, height_ft, width_ft} for dji_agras."""
+    files written. spray: {rate_gal_ac, height_ft, width_ft} for dji_agras. xag_geojson: also write
+    the GeoJSON beside XAG's KML."""
     from pyproj import Transformer
     import datetime
     t = TARGETS.get(target)
@@ -783,6 +785,8 @@ def export_outlines(areas, ids, epsg, out_dir, target="generic", fmt="kml", per_
             with open(p, "w", encoding="utf-8") as fh:
                 fh.write(_xag_kml(feats))
             files.append(p)
+            if not xag_geojson:
+                continue
             p = os.path.join(out_dir, stem + ".geojson")
             with open(p, "w", encoding="utf-8") as fh:
                 json.dump({"type": "FeatureCollection", "name": "layer",
