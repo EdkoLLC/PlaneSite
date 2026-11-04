@@ -1,8 +1,8 @@
 {
- "version": "2.0.3",
+ "version": "2.0.4",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.3.zip",
- "sha256": "a64f7f3cafcb3de70327b89a52b29b007a52059838bdb59beb001901d5c4a144",
- "notes": "PlaneSite 2.0.3:\n- Fixes processing stopping with \"The EPSG code is unknown ... proj.db ... comes from another PROJ installation\". Another mapping program on the computer (for example XGEOMapper) had pointed the whole computer at its own, older copy of the coordinate-system database. PlaneSite now always uses its own.\n- Also in this update (2.0.2): publishing a map that's already on GitHub uploads only new or changed tiles, and asks before a re-made map would double the repository's size.",
+ "app_zip": "updates/planesite-app-2.0.4.zip",
+ "sha256": "3c9a96fd69ec533dea172bbe25dd14c94e098217f9c7cf54348fae02f4d63092",
+ "notes": "PlaneSite 2.0.4: power lines and fences stay in one piece.\n- Seams between flight lines are now placed clear of raised detail. A power line or fence running along the flight lines used to come out in pieces, or vanish, because it appears a few feet apart in neighbouring flight lines' photos and the seam ran right between the two. PlaneSite now finds where neighbouring flight lines disagree and keeps the seam clear of it, so the wire comes from one set of photos. Where the seam has to cross (around trees, for example), it does so in one short jog.\n- Works on regular mapping missions (parallel flight lines, as Pilot 2 flies them); other flights keep the previous seams. Rendering takes about 10% longer.\n- Re-process a job to get the new seams.",
  "date": "2026-11-04"
 }
