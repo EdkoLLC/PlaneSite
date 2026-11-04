@@ -17,7 +17,8 @@ if __name__ == "__main__":
     mp.freeze_support()
     from planesite import appwindow
     no_window = "--no-window" in sys.argv or "--no-browser" in sys.argv
-    if sys.stdout is None or os.path.basename(sys.executable).lower() in ("pythonw.exe", "planesitew.exe"):
+    if sys.stdout is None or os.path.basename(sys.executable).lower() in ("pythonw.exe", "planesitew.exe") \
+            or os.environ.get("PLANESITE_APP_BUNDLE"):
         logdir = os.path.join(appwindow.data_dir(), "logs")
         os.makedirs(logdir, exist_ok=True)
         log = open(os.path.join(logdir, "planesite.log"), "a", buffering=1, encoding="utf-8")

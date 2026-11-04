@@ -16,6 +16,9 @@ def total_ram_bytes():
             st.dwLength = ctypes.sizeof(MS)
             ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st))
             return int(st.ullTotalPhys)
+        if sys.platform == "darwin":
+            import subprocess
+            return int(subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True).stdout)
         return int(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES"))
     except Exception:
         return 8 * 1024 ** 3
@@ -42,6 +45,11 @@ def cpu_name():
             import winreg
             k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
             return str(winreg.QueryValueEx(k, "ProcessorNameString")[0]).strip()
+        if sys.platform == "darwin":
+            import subprocess
+            n = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip()
+            if n:
+                return n
         with open("/proc/cpuinfo") as f:
             for line in f:
                 if line.startswith("model name"):

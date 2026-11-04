@@ -49,6 +49,12 @@ def _browser_candidates():
             if base:
                 c.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
                 c.append(os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"))
+    elif sys.platform == "darwin":
+        # Chromium browsers in app mode; Safari (no app mode) is the fallback via the default browser
+        for base in ("/Applications", os.path.join(os.path.expanduser("~"), "Applications")):
+            for app, exe in (("Google Chrome", "Google Chrome"), ("Microsoft Edge", "Microsoft Edge"),
+                             ("Brave Browser", "Brave Browser"), ("Chromium", "Chromium")):
+                c.append(os.path.join(base, app + ".app", "Contents", "MacOS", exe))
     else:
         for exe in ("microsoft-edge", "google-chrome", "chromium", "chromium-browser"):
             for d in os.environ.get("PATH", "").split(os.pathsep):
@@ -72,6 +78,8 @@ WINDOW_FLAGS = [
     # the window frozen while PlaneSite keeps running. The map and panels draw fine in software.
     "--disable-gpu",
 ]
+if sys.platform == "darwin":
+    WINDOW_FLAGS.remove("--disable-gpu")     # no NVIDIA processing to compete with on a Mac
 
 
 def open_window(url):

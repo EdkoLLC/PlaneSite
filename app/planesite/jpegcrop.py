@@ -42,6 +42,8 @@ def _load():
     names = [os.environ.get("PLANESITE_TURBOJPEG", "")]
     if sys.platform == "win32":
         names += [os.path.join(here, "turbojpeg.dll")]
+    elif sys.platform == "darwin":
+        names += [os.path.join(here, "libturbojpeg.dylib"), "/opt/homebrew/lib/libturbojpeg.dylib"]
     else:
         names += [os.path.join(here, "libturbojpeg.so"), "libturbojpeg.so.0", "libturbojpeg.so"]
     for n in names:
@@ -75,7 +77,8 @@ def present():
     here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin")
     if os.environ.get("PLANESITE_TURBOJPEG"):
         return True
-    return os.path.exists(os.path.join(here, "turbojpeg.dll" if sys.platform == "win32" else "libturbojpeg.so")) \
+    lib = {"win32": "turbojpeg.dll", "darwin": "libturbojpeg.dylib"}.get(sys.platform, "libturbojpeg.so")
+    return os.path.exists(os.path.join(here, lib)) \
         or (sys.platform != "win32" and available())
 
 

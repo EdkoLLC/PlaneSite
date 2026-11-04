@@ -2351,7 +2351,7 @@ function showUpdateInfo() {
   $("updMsg").textContent = "Version " + u.latest + " is available. You have " + u.current + ".";
   if (u.notes) { $("updNotes").textContent = u.notes; $("updNotes").hidden = false; }
   if (u.needs_full) {
-    setErr("updErr", "This update changes the bundled libraries, so it needs the full installer. Your projects are kept.");
+    setErr("updErr", u.full_note || "This update changes the bundled libraries, so it needs the full installer. Your projects are kept.");
     if (u.full_url || u.page) { $("updFull").href = u.full_url || u.page; $("updFull").hidden = false; }
   } else {
     $("updInstall").hidden = false;

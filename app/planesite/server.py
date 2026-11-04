@@ -197,7 +197,35 @@ sys.stdout.write(p or "")
 '''
 
 
+def _mac_browse(mode, title, initial):
+    """Native macOS open dialog (AppleScript), shown in front of the PlaneSite window."""
+    def q(v):
+        return '"' + (v or "").replace("\\", "\\\\").replace('"', '\\"') + '"'
+    where = ""
+    if initial and os.path.isdir(initial):
+        where = " default location (POSIX file %s)" % q(initial)
+    types = {"images": '{"public.jpeg"}', "geotiff": '{"public.tiff"}'}.get(mode)
+    if mode == "folder":
+        body = "set r to choose folder with prompt %s%s\nreturn POSIX path of r" % (q(title), where)
+    else:
+        multi = " with multiple selections allowed" if mode == "images" else ""
+        of_type = (" of type " + types) if types else ""
+        body = ("set r to choose file with prompt %s%s%s%s\n" % (q(title), of_type, where, multi) +
+                ("set out to \"\"\nrepeat with f in r\nset out to out & POSIX path of f & linefeed\nend repeat\nreturn out"
+                 if mode == "images" else "return POSIX path of r"))
+    # the dialog belongs to osascript itself (brought to the front), so macOS doesn't ask for
+    # permission to control the browser
+    script = "activate\n" + body
+    out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=3600)
+    return (out.stdout or "").strip() if out.returncode == 0 else ""     # cancelled: error -128
+
+
 def browse(mode, title, initial):
+    if sys.platform == "darwin":
+        p = _mac_browse(mode, title, initial)
+        if mode == "images":
+            return [os.path.normpath(x) for x in p.splitlines() if x.strip()]
+        return os.path.normpath(p) if p else ""
     flags = 0x08000000 if IS_WIN else 0
     out = subprocess.run([sys.executable, "-c", BROWSE_CODE, mode, title, initial or ""],
                          capture_output=True, text=True, creationflags=flags, timeout=3600)
@@ -1771,6 +1799,8 @@ class Handler(BaseHTTPRequestHandler):
             p = save_diagnostics()
             if IS_WIN:
                 subprocess.Popen(["explorer", "/select,", p])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", "-R", p])          # show it selected in Finder
             else:
                 open_in_explorer(os.path.dirname(p))
             return {"path": p}
