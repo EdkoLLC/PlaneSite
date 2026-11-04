@@ -1837,13 +1837,14 @@ class Handler(BaseHTTPRequestHandler):
             if not ids:
                 raise ApiError("Choose at least one field.")
             out_dir = export_dir("Boundaries", BND_DIRS.get(b.get("target") or "generic", "Other software"))
-            S.cfg["outlines"] = {k: b.get(k) for k in ("target", "format", "per_field", "obstacles", "spray")}
+            S.cfg["outlines"] = {k: b.get(k) for k in ("target", "format", "per_field", "obstacles", "spray", "xag_geojson")}
             S.save_cfg()
             try:
                 files = export_outlines(load_areas(), ids, S.origin[0], out_dir, b.get("target") or "generic",
                                         fmt=b.get("format") or "kml", per_field=bool(b.get("per_field", True)),
                                         obstacles=bool(b.get("obstacles", True)),
-                                        base=safe_name(S.proj["name"]), spray=b.get("spray"))
+                                        base=safe_name(S.proj["name"]), spray=b.get("spray"),
+                                        xag_geojson=bool(b.get("xag_geojson")))
             except ValueError as e:
                 raise ApiError(str(e))
             return {"files": files, "dir": out_dir}

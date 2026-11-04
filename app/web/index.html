@@ -413,8 +413,8 @@
       <fieldset class="bndtargets">
         <legend>Spray operation</legend>
         <label><input type="radio" name="bndtarget" value="dji_agras"><span><b>DJI Agras / SmartFarm</b><small>Shapefile with obstacles cut out, rate, height and spray width.</small></span></label>
-        <label><input type="radio" name="bndtarget" value="xag"><span><b>XAG</b><small>KML and GeoJSON with boundary and obstacles.</small></span></label>
-        <label><input type="radio" name="bndtarget" value="ceres"><span><b>Ceres Applicator View</b><small>KML, field boundary only.</small></span></label>
+        <label><input type="radio" name="bndtarget" value="xag"><span><b>XAG</b><small>KML with boundary and obstacles.</small></span></label>
+        <label><input type="radio" name="bndtarget" value="ceres"><span><b>Ceres Applicator View</b><small>KML with obstacles cut out.</small></span></label>
       </fieldset>
       <fieldset class="bndtargets">
         <legend>Other software</legend>
@@ -427,6 +427,7 @@
       <label class="check"><input type="checkbox" id="bndAll"> <span id="bndAllLabel">All fields</span></label>
       <ul class="explist" id="bndList"></ul>
     </fieldset>
+    <label class="check" id="bndXagGeoRow" hidden><input type="checkbox" id="bndXagGeo"> Also write a GeoJSON <small class="muted">(for XAG's FMS web portal)</small></label>
     <div id="bndGeneric">
       <fieldset class="seg">
         <legend>File type</legend>

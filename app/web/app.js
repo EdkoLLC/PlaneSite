@@ -1476,11 +1476,11 @@ const BND_HOW = {
     "To send a ready-made mission with height and overlap instead, use the send button next to the field.",
   dji_agras: "Writes a DJI\\ShapeFile folder. Copy the DJI folder to the root of the remote controller's microSD card or a USB drive, " +
     "then import the field in the Agras app. Each field is one shape with the obstacles cut out.",
-  xag: "Writes a folder with a KML and a GeoJSON for each field. Import the KML in XAG's field manager (Field Import) or the XAG One app.",
-  ceres: "One KML per field, boundary only. In Applicator View: Manage Fields → Import Fields.",
+  xag: "Writes a folder with a KML for each field (boundary and obstacles). Import it in XAG's field manager (Field Import) or the XAG One app.",
+  ceres: "One KML per field, with the obstacles cut out of the field. In Applicator View: Manage Fields → Import Fields.",
   generic: "Boundaries and obstacles as separate shapes tagged BOUNDARY and OBSTACLE, as Pix4Dfields writes them.",
 };
-const BND_OBS = { dji_mapping: false, ceres: false };
+const BND_OBS = { dji_mapping: false };
 const bnd = { dir: "", dirs: {} };
 const BND_FOLDER = { generic: "Other software", dji_mapping: "DJI Pilot 2", dji_agras: "DJI Agras", xag: "XAG", ceres: "Ceres" };
 const bndTarget = () => document.querySelector("input[name=bndtarget]:checked").value;
@@ -1496,6 +1496,7 @@ async function openOutlines() {
   const f = last.format && document.querySelector('input[name=bndfmt][value="' + last.format + '"]');
   if (f) f.checked = true;
   if (last.per_field != null) $("bndPerField").checked = !!last.per_field;
+  $("bndXagGeo").checked = !!last.xag_geojson;
   if (last.obstacles != null) $("bndObs").checked = !!last.obstacles;
   const sp = last.spray || {};
   if (sp.rate_gal_ac != null) $("bndRate").value = sp.rate_gal_ac;
@@ -1530,10 +1531,11 @@ function syncOutlines() {
   $("bndWhere").innerHTML = "";
   $("bndWhere").append("Saved in the project's ", Object.assign(document.createElement("b"), { textContent: "exports › Boundaries › " + BND_FOLDER[t] }), " folder.");
   $("bndGeneric").hidden = t !== "generic";
+  $("bndXagGeoRow").hidden = t !== "xag";
   $("bndSpray").hidden = t !== "dji_agras";
   const obsOk = BND_OBS[t] !== false;
   $("bndObs").disabled = !obsOk;
-  $("bndObsNote").textContent = obsOk ? "" : t === "dji_mapping" ? "(not used for mapping missions)" : "(Applicator View takes the boundary only)";
+  $("bndObsNote").textContent = obsOk ? "" : "(not used for mapping missions)";
   const boxes = [...document.querySelectorAll("#bndList input")];
   const n = boxes.filter((c) => c.checked).length;
   $("bndAll").checked = n === boxes.length && n > 0;
@@ -1552,6 +1554,7 @@ async function runOutlines() {
     ids: [...document.querySelectorAll("#bndList input:checked")].map((c) => c.dataset.id),
     format: document.querySelector("input[name=bndfmt]:checked").value,
     per_field: $("bndPerField").checked,
+    xag_geojson: t === "xag" && $("bndXagGeo").checked,
     obstacles: $("bndObs").checked && BND_OBS[t] !== false,
   };
   body.spray = { rate_gal_ac: +$("bndRate").value, height_ft: +$("bndHeight").value, width_ft: +$("bndWidth").value };
