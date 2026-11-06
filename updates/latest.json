@@ -1,8 +1,8 @@
 {
- "version": "2.0.8",
+ "version": "2.0.9",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.8.zip",
- "sha256": "0f233c12116f1443103393c7b0c02d4e6e4fa7b989fcb3ba6bf9c09f0a9a9ddf",
- "notes": "Mac: updates now install from inside PlaneSite, like on Windows. Windows: no change in how PlaneSite works.",
- "date": "2026-11-04"
+ "app_zip": "updates/planesite-app-2.0.9.zip",
+ "sha256": "976f0614676f7bdbd186d0713ea2fc9ef4a43fbaf99e7d8c2dff06a702549eaf",
+ "notes": "Mac: opens properly from Applications, and keeps running when its Safari tab is in the background. Windows: no change in how PlaneSite works.",
+ "date": "2026-11-06"
 }
