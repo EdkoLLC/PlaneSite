@@ -41,7 +41,12 @@ PY="$RES/python/bin/python3"
 APP="$("$PY" -I "$RES/choose_app.py" "$RES" 2>/dev/null)"
 [ -f "$APP/main.py" ] || APP="$RES/app"
 cd "$RES"
-exec "$PY" "$APP/main.py" "$@"
+# Start PlaneSite in the background and return straight away. PlaneSite isn't a Cocoa app, so it
+# never "checks in" with macOS; if this launcher kept running, Finder would wait for it and then
+# report that PlaneSite "is not open anymore". main.py reuses a PlaneSite that is already running.
+nohup "$PY" "$APP/main.py" "$@" >/dev/null 2>&1 </dev/null &
+disown
+exit 0
 """
 
 CHOOSER = r'''"""Prints the app folder to run: the updated copy in Application Support when it is newer

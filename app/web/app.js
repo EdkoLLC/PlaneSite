@@ -119,7 +119,14 @@ function stackOf(err) {
 }
 window.addEventListener("error", (e) => reportError((e.message || "error") + " at " + (e.filename || "").split("/").pop() + ":" + e.lineno + errContext() + stackOf(e.error)));
 window.addEventListener("unhandledrejection", (e) => reportError("unhandled: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason) + errContext()));
-document.addEventListener("visibilitychange", () => { if (status && status.running) reportError("note: window " + document.visibilityState + errContext()); });
+document.addEventListener("visibilitychange", () => {
+  if (status && status.running) reportError("note: window " + document.visibilityState + errContext());
+  // tell PlaneSite a hidden tab is still open: some browsers (Safari) stop its checking-in
+  api("/api/window", { state: document.visibilityState === "hidden" ? "hidden" : "visible" }).catch(() => {});
+});
+window.addEventListener("pagehide", () => {
+  try { navigator.sendBeacon("/api/window", JSON.stringify({ state: "closed" })); } catch (e) { /* ignore */ }
+});
 
 async function refresh() {
   // whatever happens, the next refresh is scheduled: a failed request or a display error must

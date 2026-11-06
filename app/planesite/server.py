@@ -83,6 +83,9 @@ class State:
         self.tile_local = threading.local()
         self.origin = None
         self.last_seen = 0.0
+        # what the page last said about itself: "visible", "hidden" (a background tab or a covered
+        # window, which browsers like Safari stop polling from) or "closed" (the page was closed)
+        self.win_state = "visible"
 
     def save_cfg(self):
         save_json(self.cfg_path, self.cfg)
@@ -1486,6 +1489,8 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(u.query)
             if path.startswith("/api/"):
                 S.last_seen = time.time()
+                if S.win_state == "closed":
+                    S.win_state = "visible"  # reloaded, or another window took over
                 return self._send(200, self.api_get(path, q))
             m = re.match(r"^/tiles/(\d+)/(-?\d+)/(-?\d+)\.png$", path)
             if m:
@@ -1640,6 +1645,12 @@ class Handler(BaseHTTPRequestHandler):
 
     # ----------------------------------------------------------------- POST
     def api_post(self, path, b):
+        if path == "/api/window":
+            st = str(b.get("state", ""))
+            if st in ("visible", "hidden", "closed"):
+                S.win_state = st
+                S.last_seen = time.time()
+            return {}
         if path == "/api/browse":
             return {"path": browse(b.get("mode", "folder"), b.get("title", "Select"), b.get("initial", ""))}
         if path == "/api/clientlog":
@@ -1967,9 +1978,16 @@ def lifetime_watch(srv, browser):
             if browser is not None and time.time() - started > 120:
                 break  # window closed before the page ever loaded
             continue
-        # 20 s after our own window closes; a little longer when this server was started without one
-        # (after an update restart the open window reconnects within seconds)
-        limit = 20 if browser is not None else 45
+        # 20 s after our own window closes; longer when the window is a normal browser tab (no
+        # Chrome / Edge app window, e.g. Safari on a Mac) or after an update restart, where the open
+        # window reconnects within seconds. A hidden tab polls rarely or not at all, so it gets hours;
+        # a page that said it was closed gets a few seconds to reload.
+        if S.win_state == "hidden":
+            limit = 8 * 3600
+        elif S.win_state == "closed":
+            limit = 15
+        else:
+            limit = 20 if browser is not None else 90
         if idle > limit:
             break
     print("%s No window open and nothing running - closing PlaneSite." % time.strftime("%H:%M:%S"))
