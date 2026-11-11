@@ -1327,6 +1327,7 @@ function renderAreaList() {
   $("areaActions").hidden = !areas.length;
   $("btnExportAreas").disabled = !f.length;
   $("btnOutlines").disabled = !f.length;
+  $("btnAcresXlsx").disabled = !f.length;
   const tot = f.reduce((s, a) => s + a.ac, 0);
   updateAreasLock(status && status.project);
   $("areaCount").textContent = f.length + (f.length === 1 ? " area · " : " areas · ") + fmt(tot, tot < 10 ? 1 : 0) + " ac" +
@@ -2240,6 +2241,16 @@ function wire() {
   $("areaClear").onclick = () => { if (confirm("Remove all areas?")) { if (edit) endEdit(); areas = []; saveAreas(); } };
   $("btnExportAreas").onclick = () => openExport(true);
   $("btnOutlines").onclick = openOutlines;
+  $("btnAcresXlsx").onclick = async () => {
+    const b = $("btnAcresXlsx");
+    b.disabled = true;
+    try {
+      const r = await api("/api/areas/xlsx", {});
+      toast("Saved " + r.fields + (r.fields === 1 ? " area" : " areas") + " (" + fmt(r.acres, r.acres < 10 ? 1 : 0) +
+            " ac) to exports › Acreage");
+    } catch (e) { toast(e.message, 6000); }
+    finally { b.disabled = !fields().length; }
+  };
   // plan a mission
   $("dPlan").onclick = openPlan;
   $("plFile").onclick = plPickFile;
