@@ -909,3 +909,36 @@ def _write_shp(out_dir, stem, feats, now):
     with open(base + ".cpg", "w") as fh:
         fh.write("UTF-8")
     return [base + ext for ext in (".shp", ".shx", ".dbf", ".prj", ".cpg")]
+
+
+def acres_xlsx(areas, path, sheet="Acres"):
+    """Write the fields and their acres to an Excel file, in the order they're listed. When any
+    obstacles are drawn, also their number and acres per field and the acres left without them."""
+    from .xlsxwrite import write_xlsx
+    parents = obstacle_parents(areas)
+    fields = [a for a in areas if a.get("role") != "obstacle"]
+    obs = {}
+    for o in areas:
+        if o.get("role") == "obstacle" and parents.get(o["id"]):
+            obs.setdefault(parents[o["id"]], []).append(float(area_stats(o)["ac"]))
+    with_obs = any(obs.values())
+    header = ["Area", "Acres", "Hectares"]
+    formats = [None, "#,##0.00", "#,##0.00"]
+    widths = [max(12, min(48, max([len(str(a["name"])) for a in fields] + [4]) + 2)), 12, 12]
+    if with_obs:
+        header += ["Obstacles", "Obstacle acres", "Acres without obstacles"]
+        formats += ["0", "#,##0.00", "#,##0.00"]
+        widths += [11, 15, 24]
+    rows = []
+    for a in fields:
+        st = area_stats(a)
+        ac, ha = round(float(st["ac"]), 4), round(float(st["ha"]), 4)
+        row = [a["name"], ac, ha]
+        if with_obs:
+            o = obs.get(a["id"], [])
+            oac = round(sum(o), 4)
+            row += [len(o), oac, round(max(0.0, ac - oac), 4)]
+        rows.append(row)
+    totals = {c: "SUM" for c in range(1, len(header))}
+    write_xlsx(path, sheet, header, rows, formats=formats, widths=widths, totals=totals)
+    return {"path": path, "fields": len(fields), "acres": round(sum(r[1] for r in rows), 2)}

@@ -1889,6 +1889,24 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 raise ApiError(str(e))
             return {"files": files, "dir": out_dir}
+        if path == "/api/areas/xlsx":
+            from .export import acres_xlsx
+            areas = load_areas()
+            if not any(a.get("role") != "obstacle" for a in areas):
+                raise ApiError("Draw or import a field first.")
+            out_dir = export_dir("Acreage")
+            os.makedirs(out_dir, exist_ok=True)
+            p = os.path.join(out_dir, "%s_acres.xlsx" % safe_name(S.proj["name"]))
+            try:
+                res = acres_xlsx(areas, p, sheet=S.proj["name"])
+            except PermissionError:
+                raise ApiError("The spreadsheet is open in Excel. Close it there and export again.")
+            try:
+                open_in_explorer(p)  # opens it in Excel (or whatever opens .xlsx files)
+            except Exception:
+                pass
+            res["dir"] = out_dir
+            return res
         if path == "/api/areas/kml":
             from .export import areas_to_kml
             areas = [a for a in load_areas() if not b.get("ids") or a["id"] in b["ids"]]
