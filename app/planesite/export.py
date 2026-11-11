@@ -922,9 +922,9 @@ def acres_xlsx(areas, path, sheet="Acres"):
         if o.get("role") == "obstacle" and parents.get(o["id"]):
             obs.setdefault(parents[o["id"]], []).append(float(area_stats(o)["ac"]))
     with_obs = any(obs.values())
-    header = ["Area", "Acres", "Hectares"]
-    formats = [None, "#,##0.00", "#,##0.00"]
-    widths = [max(12, min(48, max([len(str(a["name"])) for a in fields] + [4]) + 2)), 12, 12]
+    header = ["Area", "Acres"]
+    formats = [None, "#,##0.00"]
+    widths = [max(12, min(48, max([len(str(a["name"])) for a in fields] + [4]) + 2)), 12]
     if with_obs:
         header += ["Obstacles", "Obstacle acres", "Acres without obstacles"]
         formats += ["0", "#,##0.00", "#,##0.00"]
@@ -932,8 +932,8 @@ def acres_xlsx(areas, path, sheet="Acres"):
     rows = []
     for a in fields:
         st = area_stats(a)
-        ac, ha = round(float(st["ac"]), 4), round(float(st["ha"]), 4)
-        row = [a["name"], ac, ha]
+        ac = round(float(st["ac"]), 4)
+        row = [a["name"], ac]
         if with_obs:
             o = obs.get(a["id"], [])
             oac = round(sum(o), 4)
