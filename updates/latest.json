@@ -1,8 +1,8 @@
 {
- "version": "2.0.9",
+ "version": "2.0.10",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.9.zip",
- "sha256": "976f0614676f7bdbd186d0713ea2fc9ef4a43fbaf99e7d8c2dff06a702549eaf",
- "notes": "Mac: opens properly from Applications, and keeps running when its Safari tab is in the background. Windows: no change in how PlaneSite works.",
- "date": "2026-11-06"
+ "app_zip": "updates/planesite-app-2.0.10.zip",
+ "sha256": "34e97908d8331d2cf81d27042636ec871d694e211f2800f1bd9b581666501788",
+ "notes": "New: Acres to Excel in the Areas panel saves a spreadsheet of the areas and their acres (with totals, and obstacle acres when obstacles are drawn) to the project's exports folder and opens it.",
+ "date": "2026-11-11"
 }
