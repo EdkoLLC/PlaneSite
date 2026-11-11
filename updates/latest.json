@@ -1,8 +1,8 @@
 {
- "version": "2.0.10",
+ "version": "2.0.11",
  "runtime": 3,
- "app_zip": "updates/planesite-app-2.0.10.zip",
- "sha256": "34e97908d8331d2cf81d27042636ec871d694e211f2800f1bd9b581666501788",
- "notes": "New: Acres to Excel in the Areas panel saves a spreadsheet of the areas and their acres (with totals, and obstacle acres when obstacles are drawn) to the project's exports folder and opens it.",
+ "app_zip": "updates/planesite-app-2.0.11.zip",
+ "sha256": "5b37d070775dd61e281deaa5034ddb1776b213d022d6ae44b6eae63b91d053e6",
+ "notes": "Acres to Excel: acres only (the hectares column is gone).",
  "date": "2026-11-11"
 }
