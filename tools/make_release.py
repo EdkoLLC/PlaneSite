@@ -31,8 +31,10 @@ with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
 sha = hashlib.sha256(open(zp, "rb").read()).hexdigest()
 man = {"version": ver, "runtime": m.RUNTIME, "app_zip": "updates/" + zname, "sha256": sha,
        "notes": notes, "date": datetime.date.today().isoformat()}
-if full_url:
-    man["full_url"] = full_url
+# full installers live on the GitHub release; these links always give the newest one
+REL = "https://github.com/EdkoLLC/PlaneSite/releases/latest/download/"
+man["full_url"] = full_url or REL + "PlaneSite-Setup.exe"
+man["mac_url"] = REL + "PlaneSite-mac-arm64.zip"
 with open(os.path.join(OUT, "latest.json"), "w") as f:
     json.dump(man, f, indent=1)
 print("PlaneSite", ver, "->", zname, os.path.getsize(zp), "bytes, sha256", sha)

@@ -4,5 +4,7 @@
  "app_zip": "updates/planesite-app-2.0.12.zip",
  "sha256": "c49602ea7bd1f557ee2abec5d47626cebcd66f0be927c97777ef83537d7e9d88",
  "notes": "Acres to Excel: just each area and its acres, with a total (no obstacle columns).",
- "date": "2026-11-11"
+ "date": "2026-11-11",
+ "full_url": "https://github.com/EdkoLLC/PlaneSite/releases/latest/download/PlaneSite-Setup.exe",
+ "mac_url": "https://github.com/EdkoLLC/PlaneSite/releases/latest/download/PlaneSite-mac-arm64.zip"
 }
